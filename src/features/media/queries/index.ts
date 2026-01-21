@@ -14,19 +14,24 @@ export const MEDIA_KEYS = {
   linked: ["media", "linked-keys"] as const,
 
   // Child keys (functions for specific queries)
-  list: (search: string = "") => ["media", "list", search] as const,
+  list: (search: string = "", unusedOnly: boolean = false) =>
+    ["media", "list", search, unusedOnly] as const,
   linkedKeys: (keys: string) => ["media", "linked-keys", keys] as const,
   linkedPosts: (key: string) => ["media", "linked-posts", key] as const,
 };
 
-export function mediaInfiniteQueryOptions(search: string = "") {
+export function mediaInfiniteQueryOptions(
+  search: string = "",
+  unusedOnly: boolean = false,
+) {
   return infiniteQueryOptions({
-    queryKey: MEDIA_KEYS.list(search),
+    queryKey: MEDIA_KEYS.list(search, unusedOnly),
     queryFn: ({ pageParam }) =>
       getMediaFn({
         data: {
           cursor: pageParam,
           search: search || undefined,
+          unusedOnly: unusedOnly || undefined,
         },
       }),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,

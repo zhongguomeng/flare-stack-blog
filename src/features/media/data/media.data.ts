@@ -1,7 +1,7 @@
 import { and, desc, eq, lt, sql, sum } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
 import { escapeLikeString } from "@/features/media/data/helper";
-import { MediaTable } from "@/lib/db/schema";
+import { MediaTable, PostMediaTable } from "@/lib/db/schema";
 
 export type Media = typeof MediaTable.$inferSelect;
 
@@ -31,6 +31,7 @@ const DEFAULT_PAGE_SIZE = 20;
  * @param cursor - 上一页最后一条记录的 id，用于分页
  * @param limit - 每页数量
  * @param search - 搜索文件名
+ * @param unusedOnly - 是否只显示未被引用的媒体
  */
 export async function getMediaList(
   db: DB,
@@ -38,9 +39,15 @@ export async function getMediaList(
     cursor?: number;
     limit?: number;
     search?: string;
+    unusedOnly?: boolean;
   },
 ): Promise<{ items: Array<Media>; nextCursor: number | null }> {
-  const { cursor, limit = DEFAULT_PAGE_SIZE, search } = options ?? {};
+  const {
+    cursor,
+    limit = DEFAULT_PAGE_SIZE,
+    search,
+    unusedOnly,
+  } = options ?? {};
 
   // 构建条件
   const conditions: Array<SQL> = [];
@@ -52,9 +59,42 @@ export async function getMediaList(
     conditions.push(sql`${MediaTable.fileName} LIKE ${pattern} ESCAPE '\\'`);
   }
 
-  const items = await db
-    .select()
-    .from(MediaTable)
+  // 基础查询
+  const baseQuery = db.select().from(MediaTable).$dynamic();
+
+  // 如果只需要未引用的媒体
+  if (unusedOnly) {
+    // 使用 LEFT JOIN 排除存在于 PostMediaTable 中的记录
+    const unusedQuery = db
+      .select({
+        media: MediaTable,
+        postMediaId: PostMediaTable.postId,
+      })
+      .from(MediaTable)
+      .leftJoin(PostMediaTable, eq(MediaTable.id, PostMediaTable.mediaId))
+      .$dynamic();
+
+    conditions.push(sql`${PostMediaTable.postId} IS NULL`);
+
+    const items = await unusedQuery
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(MediaTable.id))
+      .limit(limit + 1)
+      .then((rows) => rows.map((row) => row.media));
+
+    // 判断是否有下一页
+    const hasMore = items.length > limit;
+    if (hasMore) {
+      items.pop(); // 移除多取的一条
+    }
+
+    const nextCursor = hasMore ? (items[items.length - 1]?.id ?? null) : null;
+
+    return { items, nextCursor };
+  }
+
+  // 常规查询
+  const items = await baseQuery
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(MediaTable.id))
     .limit(limit + 1);

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import {
   Calendar,
   Check,
+  Copy,
   Download,
   ExternalLink,
   FileText,
@@ -11,9 +12,11 @@ import {
   Link2,
   Loader2,
   Pencil,
+  Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import type { MediaAsset } from "@/features/media/components/media-library/types";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,12 +29,14 @@ interface MediaPreviewModalProps {
   asset: MediaAsset | null;
   onClose: () => void;
   onUpdateName: (key: string, name: string) => Promise<void>;
+  onDelete: (key: string) => Promise<void>;
 }
 
 export function MediaPreviewModal({
   asset,
   onClose,
   onUpdateName,
+  onDelete,
 }: MediaPreviewModalProps) {
   const isMounted = !!asset;
   const shouldRender = useDelayUnmount(isMounted, 200);
@@ -43,12 +48,14 @@ export function MediaPreviewModal({
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (asset) {
       setActiveAsset(asset);
       setEditName(asset.fileName);
       setIsEditing(false);
+      setIsDeleting(false);
     }
   }, [asset]);
 
@@ -64,6 +71,43 @@ export function MediaPreviewModal({
       console.error("Failed to update name:", error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!activeAsset) return;
+
+    // Safety check for linked posts handled by parent, but good to have visual feedback
+    if (linkedPosts.length > 0) {
+      toast.error("无法删除", {
+        description: "此资源被文章引用，请先移除引用。",
+      });
+      return;
+    }
+
+    if (!confirm("确定要永久删除此文件吗？")) return;
+
+    setIsDeleting(true);
+    try {
+      await onDelete(activeAsset.key);
+      onClose();
+    } catch (error) {
+      console.error("Delete failed:", error);
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!activeAsset) return;
+    try {
+      await navigator.clipboard.writeText(activeAsset.url);
+      toast.success("链接已复制", {
+        description: "图片地址已复制到剪贴板",
+      });
+    } catch (err) {
+      toast.error("复制失败", {
+        description: "无法访问剪贴板",
+      });
     }
   };
 
@@ -271,20 +315,45 @@ export function MediaPreviewModal({
           </div>
 
           {/* Actions */}
-          <div className="p-6 md:p-8 border-t border-border/30 bg-background">
-            <a
-              href={`${activeAsset.url}?original=true`}
-              download={activeAsset.fileName}
-              target="_blank"
-              rel="noreferrer"
-              className={cn(
-                buttonVariants({ variant: "outline" }),
-                "w-full h-10 text-[10px] uppercase tracking-[0.2em] font-medium hover:bg-foreground hover:text-background transition-all rounded-none gap-2 flex items-center justify-center whitespace-nowrap border-foreground/20",
-              )}
+          <div className="p-6 md:p-8 border-t border-border/30 bg-background flex flex-col gap-3">
+            <div className="flex gap-3">
+              <a
+                href={`${activeAsset.url}?original=true`}
+                download={activeAsset.fileName}
+                target="_blank"
+                rel="noreferrer"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "flex-1 h-10 text-[10px] uppercase tracking-[0.2em] font-medium hover:bg-foreground hover:text-background transition-all rounded-none gap-2 flex items-center justify-center whitespace-nowrap border-foreground/20",
+                )}
+              >
+                <Download size={12} className="shrink-0" />
+                <span>[ 下载 ]</span>
+              </a>
+
+              <Button
+                variant="outline"
+                onClick={handleCopyLink}
+                className="flex-1 h-10 text-[10px] uppercase tracking-[0.2em] font-medium hover:bg-foreground hover:text-background transition-all rounded-none gap-2 border-foreground/20"
+              >
+                <Copy size={12} className="shrink-0" />
+                <span>[ 复制链接 ]</span>
+              </Button>
+            </div>
+
+            <Button
+              variant="ghost"
+              onClick={handleDelete}
+              disabled={isDeleting || linkedPosts.length > 0}
+              className="w-full h-10 text-[10px] uppercase tracking-[0.2em] font-medium text-red-500 hover:text-red-600 hover:bg-red-500/10 transition-all rounded-none gap-2"
             >
-              <Download size={12} className="shrink-0" />
-              <span>[ 下载原件 ]</span>
-            </a>
+              {isDeleting ? (
+                <Loader2 size={12} className="animate-spin" />
+              ) : (
+                <Trash2 size={12} />
+              )}
+              <span>[ 永久删除 ]</span>
+            </Button>
           </div>
         </div>
       </div>

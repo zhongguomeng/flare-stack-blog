@@ -26,8 +26,12 @@ export function useMediaLibrary() {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebounce(searchQuery, 300);
 
+  // Unused Only Filter
+  const [unusedOnly, setUnusedOnly] = useState(false);
+
   // Track previous search to detect changes
   const [prevSearchQuery, setPrevSearchQuery] = useState("");
+  const [prevUnusedOnly, setPrevUnusedOnly] = useState(false);
 
   // Selection & Deletion State (使用 key 作为唯一标识)
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(
@@ -44,7 +48,7 @@ export function useMediaLibrary() {
     isPending,
     refetch,
   } = useInfiniteQuery({
-    ...mediaInfiniteQueryOptions(debouncedSearch),
+    ...mediaInfiniteQueryOptions(debouncedSearch, unusedOnly),
   });
 
   // Flatten all pages into a single array
@@ -67,14 +71,15 @@ export function useMediaLibrary() {
     return new Set(linkedKeysData ?? []);
   }, [linkedKeysData]);
 
-  // Clear selections when debounced search changes (actual data refresh)
+  // Clear selections when filters changes (actual data refresh)
   useEffect(() => {
-    if (debouncedSearch !== prevSearchQuery) {
+    if (debouncedSearch !== prevSearchQuery || unusedOnly !== prevUnusedOnly) {
       setSelectedKeys(new Set());
       setDeleteTarget(null);
       setPrevSearchQuery(debouncedSearch);
+      setPrevUnusedOnly(unusedOnly);
     }
-  }, [debouncedSearch, prevSearchQuery]);
+  }, [debouncedSearch, prevSearchQuery, unusedOnly, prevUnusedOnly]);
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -177,12 +182,15 @@ export function useMediaLibrary() {
       // Clear any stale deleteTarget when all keys are blocked
       setDeleteTarget(null);
     }
+
+    return allowedKeys;
   };
 
   // Confirm delete
-  const confirmDelete = () => {
-    if (!deleteTarget) return;
-    deleteMutation.mutate(deleteTarget);
+  const confirmDelete = (keys?: Array<string>) => {
+    const target = keys ?? deleteTarget;
+    if (!target || target.length === 0) return;
+    deleteMutation.mutate(target);
   };
 
   // Cancel delete
@@ -195,6 +203,8 @@ export function useMediaLibrary() {
     totalCount: mediaItems.length,
     searchQuery,
     setSearchQuery,
+    unusedOnly,
+    setUnusedOnly,
     selectedIds: selectedKeys, // 保持接口兼容
     toggleSelection,
     selectAll,

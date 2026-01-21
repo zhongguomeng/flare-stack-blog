@@ -14,6 +14,7 @@ interface MediaGridProps {
   hasMore?: boolean;
   isLoadingMore?: boolean;
   linkedMediaIds: Set<string>;
+  onRefetch?: () => void;
 }
 
 const MediaCard = memo(
@@ -38,6 +39,11 @@ const MediaCard = memo(
     const thumbnailUrl = getOptimizedImageUrl(asset.key);
 
     const handleStandardClick = () => {
+      // Direct preview on click unless in explicit selection mode (multi-select triggered by checkbox)
+      // or if shift key is pressed (range select - future feature)
+      // For now, simple logic:
+      // Click image -> Preview
+      // Click checkbox -> Select
       if (selectionModeActive) {
         onToggleSelect(asset.key);
       } else {
@@ -70,10 +76,8 @@ const MediaCard = memo(
       >
         {/* Selection Indicator (Top Left) */}
         <div
-          className={`absolute top-0 left-0 z-30 p-1.5 transition-all duration-300 ${
-            isSelected
-              ? "bg-foreground text-background"
-              : "text-muted-foreground opacity-0 group-hover:opacity-100"
+          className={`absolute top-0 left-0 z-30 p-2 transition-all duration-200 ${
+            isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           }`}
           onClick={(e) => {
             e.stopPropagation();
@@ -81,10 +85,14 @@ const MediaCard = memo(
           }}
         >
           <div
-            className={`w-3 h-3 border ${isSelected ? "border-transparent bg-background" : "border-foreground"}`}
+            className={`w-4 h-4 border flex items-center justify-center transition-colors ${
+              isSelected
+                ? "bg-foreground border-foreground"
+                : "bg-background/80 backdrop-blur-sm border-muted-foreground/50 hover:border-foreground"
+            }`}
           >
             {isSelected && (
-              <Check size={12} className="text-foreground -mt-px -ml-px" />
+              <Check size={10} className="text-background" strokeWidth={3} />
             )}
           </div>
         </div>
@@ -108,9 +116,9 @@ const MediaCard = memo(
               <img
                 src={thumbnailUrl}
                 alt={asset.fileName}
-                className={`w-full h-full object-cover transition-all duration-500 grayscale hover:grayscale-0 ${
+                className={`w-full h-full object-cover transition-all duration-500 ${
                   isLoaded ? "opacity-100" : "opacity-0"
-                } ${isSelected ? "grayscale-0 opacity-50" : ""}`}
+                } ${isSelected ? "opacity-50" : ""}`}
                 onLoad={() => setIsLoaded(true)}
               />
             </>
@@ -147,6 +155,7 @@ export function MediaGrid({
   hasMore,
   isLoadingMore,
   linkedMediaIds,
+  onRefetch,
 }: MediaGridProps) {
   const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -177,10 +186,21 @@ export function MediaGrid({
 
   if (media.length === 0) {
     return (
-      <div className="py-24 text-center border border-dashed border-border/50 bg-muted/5 rounded-none">
-        <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
-          未找到媒体资产
-        </span>
+      <div className="py-24 flex flex-col items-center justify-center text-muted-foreground gap-4 border border-dashed border-border/30 bg-muted/5">
+        <ImageIcon size={32} strokeWidth={1} className="opacity-20" />
+        <div className="text-center font-mono text-xs">
+          <span className="uppercase tracking-widest block mb-2">
+            未找到媒体资产
+          </span>
+          {onRefetch && (
+            <button
+              onClick={onRefetch}
+              className="text-[10px] uppercase tracking-widest font-bold hover:underline opacity-50 hover:opacity-100"
+            >
+              [ 刷新列表 ]
+            </button>
+          )}
+        </div>
       </div>
     );
   }
