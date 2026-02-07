@@ -206,7 +206,7 @@ export const FriendLinkModerationTable = ({
                     {item.user?.image ? (
                       <img
                         src={item.user.image}
-                        className="w-full h-full object-cover grayscale"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <span className="text-[10px] font-mono">
@@ -296,7 +296,7 @@ export const FriendLinkModerationTable = ({
                     className="rounded-none border-border"
                   />
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-none bg-muted flex items-center justify-center border border-border shrink-0 grayscale">
+                    <div className="w-8 h-8 rounded-none bg-muted flex items-center justify-center border border-border shrink-0">
                       {item.user?.image ? (
                         <img
                           src={item.user.image}

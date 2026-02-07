@@ -23,7 +23,7 @@ export function FriendLinkCard({ link }: FriendLinkCardProps) {
           <img
             src={link.logoUrl}
             alt={link.siteName}
-            className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
+            className="w-full h-full object-cover transition-all duration-300"
             loading="lazy"
           />
         ) : (

@@ -41,7 +41,7 @@ export function UserHoverCard({ user, children }: UserHoverCardProps) {
         <div className="p-8 space-y-8">
           {/* User Profile Header */}
           <div className="flex items-start justify-between">
-            <div className="space-y-4 max-w-[180px]">
+            <div className="space-y-4 max-w-45">
               <h4 className="text-xl font-serif font-medium leading-tight tracking-tight">
                 {user.name}
               </h4>
@@ -49,7 +49,7 @@ export function UserHoverCard({ user, children }: UserHoverCardProps) {
                 ID / {user.id.slice(0, 12)}...
               </p>
             </div>
-            <div className="w-14 h-14 border border-border grayscale hover:grayscale-0 transition-all duration-700 bg-muted">
+            <div className="w-14 h-14 border border-border transition-all duration-700 bg-muted">
               {user.image ? (
                 <img
                   src={user.image}
