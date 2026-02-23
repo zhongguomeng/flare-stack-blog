@@ -1,5 +1,6 @@
 import type { JSONContent } from "@tiptap/react";
 import { extractImageKey } from "@/features/media/media.utils";
+import { highlight } from "@/lib/shiki";
 
 export function slugify(text: string | null | undefined) {
   if (!text) return "untitled-log";
@@ -46,7 +47,6 @@ export function extractAllImageKeys(doc: JSONContent | null): Array<string> {
 export async function highlightCodeBlocks(
   doc: JSONContent,
 ): Promise<JSONContent> {
-  const { highlight } = await import("@/lib/shiki");
   const cloned = structuredClone(doc);
 
   async function traverse(node: JSONContent) {
@@ -57,7 +57,13 @@ export async function highlightCodeBlocks(
         const html = await highlight(code.trim(), lang);
         node.attrs = { ...node.attrs, highlightedHtml: html };
       } catch (e) {
-        console.warn(`Failed to highlight code block (lang: ${lang}):`, e);
+        console.warn(
+          JSON.stringify({
+            event: "code_highlight_failed",
+            lang,
+            error: e instanceof Error ? e.message : String(e),
+          }),
+        );
       }
     }
     if (node.content) {
